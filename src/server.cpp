@@ -11,66 +11,121 @@
 
 #include <cstring> // For strdup.
 
+#include <irods/getHostForGet.h>
+#include <irods/getHostForPut.h>
+#include <irods/rodsLog.h>
+#include <irods/rsGlobalExtern.hpp>
+#include <irods/rcGlobalExtern.h>
+#include <irods/getRemoteZoneResc.h>
+#include <irods/dataObjCreate.h>
+#include <irods/objMetaOpr.hpp>
+#include <irods/resource.hpp>
+#include <irods/collection.hpp>
+#include <irods/specColl.hpp>
+#include <irods/miscServerFunct.hpp>
+#include <irods/openCollection.h>
+#include <irods/readCollection.h>
+#include <irods/closeCollection.h>
+#include <irods/dataObjOpr.hpp>
+#include <irods/rsGetHostForGet.hpp>
+#include <irods/irods_resource_backport.hpp>
+#include <irods/irods_resource_redirect.hpp>
+
+#include <cstring>
+
+#include <nlohmann/json.hpp>
+
 namespace
 {
 	using log_api = irods::experimental::log::api;
+
+        extern "C" auto rc_project_template(RcComm* _comm, const DataObjInp* _message, char** _response) -> int
+        {
+            if (!_message || !_response) {
+                return SYS_INVALID_INPUT_PARAM;
+            }
+
+            return procApiRequest(_comm,
+                                  IRODS_APN_GET_RESCINFO_FOR_PUT,
+                                  _message, // NOLINT(cppcoreguidelines-pro-type-const-cast)
+                                  nullptr,
+                                  reinterpret_cast<void**>(_response), // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast
+                                  nullptr);
+        } // rc_project_template
 
 	//
 	// Function Prototypes
 	//
 
-	auto call_project_template(irods::api_entry*, RsComm*, const char*, char**) -> int;
+	auto call_project_template(irods::api_entry*, RsComm*, dataObjInp_t*, char**) -> int;
 
-	auto rs_project_template(RsComm*, const char*, char**) -> int;
+	auto rs_project_template(RsComm*, dataObjInp_t*, char**) -> int;
 
 	//
 	// Function Implementations
 	//
 
-	auto call_project_template(irods::api_entry* _api, RsComm* _comm, const char* _msg, char** _resp) -> int
+	auto call_project_template(irods::api_entry* _api, RsComm* _comm, dataObjInp_t *dataObjInp, char** _resp) -> int
 	{
-		return _api->call_handler<const char*, char**>(_comm, _msg, _resp);
+		return _api->call_handler<dataObjInp_t*, char**>(_comm, dataObjInp, _resp);
 	} // call_project_template
 
-	auto rs_project_template(RsComm* _comm, const char* _msg, char** _resp) -> int
+
+	auto rs_project_template(RsComm* rsComm, dataObjInp_t *dataObjInp, char** _resp) -> int
 	{
-		if (!_msg || !_resp) {
-			log_api::error("Inalid input: received nullptr for message pointer and/or response pointer.");
-			return SYS_INVALID_INPUT_PARAM;
-		}
+            char _REMOTE_OPEN[]{"remoteOpen"};
 
-		log_api::info("Project Template API received: [{}]", _msg);
+            rodsServerHost_t *rodsServerHost;
+            const int remoteFlag = getAndConnRemoteZone(rsComm, dataObjInp, &rodsServerHost, _REMOTE_OPEN);
+            if (remoteFlag < 0) {
+                return remoteFlag;
+            }
+            else if (REMOTE_HOST == remoteFlag) {
+// // // //     //const int status = rcGetHostForPut(rodsServerHost->conn, dataObjInp, _resp);
+                const int status = rc_project_template(rodsServerHost->conn, dataObjInp, _resp);
+                if (status < 0) {
+                    return status;
+                }
+            }
+            else {
+                // =-=-=-=-=-=-=-
+                // working on the "home zone", determine if we need to redirect to a different
+                // server in this zone for this operation.  if there is a RESC_HIER_STR_KW then
+                // we know that the redirection decision has already been made
+                std::string hier{};
+                if ( getValByKey( &dataObjInp->condInput, RESC_HIER_STR_KW ) == NULL ) {
+                    try {
+                        auto result = irods::resolve_resource_hierarchy(irods::CREATE_OPERATION, rsComm, *dataObjInp);
+                        hier = std::get<std::string>(result);
+                    }
+                    catch (const irods::exception& e ) {
+                        irods::log(e);
+                        return e.code();
+                    }
+                    addKeyVal( &dataObjInp->condInput, RESC_HIER_STR_KW, hier.c_str() );
+                } // if keyword
 
-		// Depending on the API's requirements, it may need to redirect to the provider.
-		// This isn't necessary for this plugin, but we demonstrates how to do it anyway.
-		try {
-			namespace ic = irods::experimental::catalog;
+                // =-=-=-=-=-=-=-
+                // extract the host location from the resource hierarchy
+                std::string location;
+                irods::error ret = irods::get_loc_for_hier_string( hier, location );
+                if ( !ret.ok() ) {
+                    irods::log( PASSMSG( "rsGetHostForPut - failed in get_loc_for_hier_string", ret ) );
+                    return -1;
+                }
 
-			if (!ic::connected_to_catalog_provider(*_comm)) {
-				log_api::trace("Redirecting request to catalog service provider.");
-
-				auto* host_info = ic::redirect_to_catalog_provider(*_comm);
-
-				return procApiRequest(
-					host_info->conn,
-					APN_PROJECT_TEMPLATE,
-					_msg,
-					nullptr,
-					reinterpret_cast<void**>(_resp), // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
-					nullptr);
-			}
-
-			ic::throw_if_catalog_provider_service_role_is_invalid();
-		}
-		catch (const irods::exception& e) {
-			log_api::error(e.what());
-			return e.code();
-		}
-
-		// Echo the message back to the client.
-		*_resp = strdup(fmt::format("YOUR MESSAGE: {}", _msg).c_str());
-
-		return 0;
+                // =-=-=-=-=-=-=-
+                // set the out variable
+                //*outHost = strdup( location.c_str() );
+                //
+                // =-=-=-=-=-=-=-
+                // set the out variable
+                nlohmann::json J;
+                J["host"] = location;
+                J["resc_hier"] = hier;
+                *_resp = strdup( J.dump().c_str() );
+            }
+            return 0;
 	} // rs_project_template
 } //namespace
 
