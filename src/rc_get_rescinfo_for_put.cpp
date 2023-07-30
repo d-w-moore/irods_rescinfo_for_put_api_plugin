@@ -1,11 +1,11 @@
-#include "irods/plugins/api/rc_project_template.h"
+#include "irods/plugins/api/rc_get_rescinfo_for_put.h"
 
-#include "irods/plugins/api/project_template_common.h" // For API plugin number.
+#include "irods/plugins/api/get_rescinfo_for_put_common.h" // For API plugin number.
 
 #include <irods/procApiRequest.h>
 #include <irods/rodsErrorTable.h>
 
-auto rc_project_template(RcComm* _comm, const char* _message, char** _response) -> int
+auto rc_get_rescinfo_for_put(RcComm* _comm, const char* _message, char** _response) -> int
 {
 	if (!_message || !_response) {
 		return SYS_INVALID_INPUT_PARAM;
@@ -17,4 +17,4 @@ auto rc_project_template(RcComm* _comm, const char* _message, char** _response) 
 	                      nullptr,
 	                      reinterpret_cast<void**>(_response), // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 	                      nullptr);
-} // rc_project_template
+} // rc_get_rescinfo_for_put

@@ -1,5 +1,5 @@
-#include "irods/plugins/api/private/project_template_common.hpp"
-#include "irods/plugins/api/project_template_common.h" // For API plugin number.
+#include "irods/plugins/api/private/get_rescinfo_for_put_common.hpp"
+#include "irods/plugins/api/get_rescinfo_for_put_common.h" // For API plugin number.
 
 #include <irods/apiHandler.hpp>
 #include <irods/catalog_utilities.hpp> // Requires linking against libnanodbc.so
@@ -39,7 +39,7 @@ namespace
 {
 	using log_api = irods::experimental::log::api;
 
-        extern "C" auto rc_project_template(RcComm* _comm, const DataObjInp* _message, char** _response) -> int
+        extern "C" auto rc_get_rescinfo_for_put(RcComm* _comm, const DataObjInp* _message, char** _response) -> int
         {
             if (!_message || !_response) {
                 return SYS_INVALID_INPUT_PARAM;
@@ -51,27 +51,27 @@ namespace
                                   nullptr,
                                   reinterpret_cast<void**>(_response), // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast
                                   nullptr);
-        } // rc_project_template
+        } // rc_get_rescinfo_for_put
 
 	//
 	// Function Prototypes
 	//
 
-	auto call_project_template(irods::api_entry*, RsComm*, dataObjInp_t*, char**) -> int;
+	auto call_get_rescinfo_for_put(irods::api_entry*, RsComm*, dataObjInp_t*, char**) -> int;
 
-	auto rs_project_template(RsComm*, dataObjInp_t*, char**) -> int;
+	auto rs_get_rescinfo_for_put(RsComm*, dataObjInp_t*, char**) -> int;
 
 	//
 	// Function Implementations
 	//
 
-	auto call_project_template(irods::api_entry* _api, RsComm* _comm, dataObjInp_t *dataObjInp, char** _resp) -> int
+	auto call_get_rescinfo_for_put(irods::api_entry* _api, RsComm* _comm, dataObjInp_t *dataObjInp, char** _resp) -> int
 	{
 		return _api->call_handler<dataObjInp_t*, char**>(_comm, dataObjInp, _resp);
-	} // call_project_template
+	} // call_get_rescinfo_for_put
 
 
-	auto rs_project_template(RsComm* rsComm, dataObjInp_t *dataObjInp, char** _resp) -> int
+	auto rs_get_rescinfo_for_put(RsComm* rsComm, dataObjInp_t *dataObjInp, char** _resp) -> int
 	{
             char _REMOTE_OPEN[]{"remoteOpen"};
 
@@ -82,7 +82,7 @@ namespace
             }
             else if (REMOTE_HOST == remoteFlag) {
 // // // //     //const int status = rcGetHostForPut(rodsServerHost->conn, dataObjInp, _resp);
-                const int status = rc_project_template(rodsServerHost->conn, dataObjInp, _resp);
+                const int status = rc_get_rescinfo_for_put(rodsServerHost->conn, dataObjInp, _resp);
                 if (status < 0) {
                     return status;
                 }
@@ -126,8 +126,8 @@ namespace
                 *_resp = strdup( J.dump().c_str() );
             }
             return 0;
-	} // rs_project_template
+	} // rs_get_rescinfo_for_put
 } //namespace
 
-const operation_type op = rs_project_template;
-auto fn_ptr = reinterpret_cast<funcPtr>(call_project_template);
+const operation_type op = rs_get_rescinfo_for_put;
+auto fn_ptr = reinterpret_cast<funcPtr>(call_get_rescinfo_for_put);

@@ -3,6 +3,6 @@
 
 struct RsComm;
 
-int rs_project_template(RsComm* _comm, dataObjInp_t* dataObjInp, char** _response);
+int rs_get_rescinfo_for_put(RsComm* _comm, dataObjInp_t* dataObjInp, char** _response);
 
 #endif // IRODS_RS_PROJECT_TEMPLATE_HPP

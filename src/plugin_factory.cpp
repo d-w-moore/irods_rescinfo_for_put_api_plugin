@@ -1,5 +1,5 @@
-#include "irods/plugins/api/private/project_template_common.hpp"
-#include "irods/plugins/api/project_template_common.h" // For API plugin number.
+#include "irods/plugins/api/private/get_rescinfo_for_put_common.hpp"
+#include "irods/plugins/api/get_rescinfo_for_put_common.h" // For API plugin number.
 
 #include <irods/apiHandler.hpp>
 #include <irods/client_api_allowlist.hpp>
