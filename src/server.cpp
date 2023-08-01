@@ -39,7 +39,7 @@ namespace
 {
 	using log_api = irods::experimental::log::api;
 
-        extern "C" auto rc_get_rescinfo_for_put(RcComm* _comm, const DataObjInp* _message, char** _response) -> int
+        auto rc_get_rescinfo_for_put(RcComm* _comm, const DataObjInp* _message, char** _response) -> int
         {
             if (!_message || !_response) {
                 return SYS_INVALID_INPUT_PARAM;
